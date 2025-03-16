@@ -1,0 +1,12 @@
+{
+    "aws_region": "us-west-2",
+    "rds": {
+        "endpoint": "YOUR_RDS_ENDPOINT",
+        "port": 3306,
+        "db_name": "etl_db",
+        "username": "admin",
+        "password": "YourPassword123"
+    },
+    "etl_source": "data/bankdataset.csv",
+    "sns_topic_arn": "YOUR_SNS_TOPIC_ARN"
+}
