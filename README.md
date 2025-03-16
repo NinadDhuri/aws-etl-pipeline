@@ -1,5 +1,9 @@
 AWS ETL Pipeline
 
+# dataset
+link - https://www.kaggle.com/datasets/ksabishek/massive-bank-dataset-1-million-rows?resource=download
+
+
 # Introduction
 The AWS ETL Pipeline repository contains a serverless ETL (Extract, Transform, Load) solution for processing banking transaction data. The pipeline’s purpose is to automatically extract raw data from a source (CSV file), transform it into a clean, structured format, and load it into a MySQL database on AWS. By leveraging AWS managed services, this pipeline can handle data ingestion with minimal infrastructure management. The end result is a relational database populated with processed transaction records, enabling easy retrieval of insights (e.g. total transactions by location, highest transaction values) using SQL queries. This README provides an overview of the pipeline’s functionality and instructions on setting it up and using it.
 
