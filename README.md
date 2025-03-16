@@ -1,10 +1,11 @@
 AWS ETL Pipeline
 
-Introduction
+# Introduction
 The AWS ETL Pipeline repository contains a serverless ETL (Extract, Transform, Load) solution for processing banking transaction data. The pipeline’s purpose is to automatically extract raw data from a source (CSV file), transform it into a clean, structured format, and load it into a MySQL database on AWS. By leveraging AWS managed services, this pipeline can handle data ingestion with minimal infrastructure management. The end result is a relational database populated with processed transaction records, enabling easy retrieval of insights (e.g. total transactions by location, highest transaction values) using SQL queries. This README provides an overview of the pipeline’s functionality and instructions on setting it up and using it.
 
-ETL Flow
+# ETL Flow
 The ETL process is designed to move data from the source CSV through transformation into the target database in a series of well-defined steps:
+   
     Extraction – A new CSV dataset is uploaded (for example, to an S3 bucket). This upload triggers the ETL process. An AWS Lambda function retrieves the raw CSV file contents.
     
     Transformation – The Lambda ETL code reads each record from the CSV and cleans or converts the data. For instance, dates are parsed into a standard format, numerical values are converted from strings (removing symbols like $ or ,), and text fields (like location names) are standardized (e.g. consistent capitalization). Any invalid or corrupt records are skipped or logged for review.
@@ -15,8 +16,9 @@ The ETL process is designed to move data from the source CSV through transformat
  
  The process begins when a CSV file is added to the source (e.g., an S3 bucket or upload location). This triggers an AWS Lambda function that performs the extraction of data from the CSV. Next, the Lambda function applies transformations such as data cleaning (for example, converting date formats and removing currency symbols) and prepares the data for insertion. Finally, the transformed data is loaded into the MySQL RDS database. Throughout the process, logs are recorded to CloudWatch, and any errors will prompt an SNS alert. This end-to-end flow ensures raw data is systematically converted into a query-ready form in the database.
 
-Tech Stack
+# Tech Stack
 This ETL pipeline uses a combination of AWS services and technologies, chosen for their serverless capabilities and ease of integration:
+    
     Amazon S3 – Used as the data source for the raw CSV file. S3 provides durable, scalable storage and the ability to trigger events when new files are uploaded, making it an ideal choice to initiate the ETL process.
     
     AWS Lambda – Serves as the compute engine for the ETL. The pipeline’s core logic (file reading, transforming, and database writing) runs in a Lambda function. Lambda was chosen because it’s serverless (no servers to manage), can be triggered by events (like S3 uploads or scheduled tasks), and scales automatically to handle the workload.
@@ -31,19 +33,24 @@ This ETL pipeline uses a combination of AWS services and technologies, chosen fo
     
     Amazon CloudWatch – Utilized for logging and monitoring. All Lambda execution logs (including success messages, processed record counts, and error stack traces) are automatically captured in CloudWatch Logs. CloudWatch was chosen because it integrates seamlessly with Lambda and allows setting up Alarms (which can trigger SNS) based on logs or metrics (for example, a CloudWatch Alarm can detect if a Lambda error occurs and notify via SNS).
 
-SQL Schema & Sample Queries
+# SQL Schema & Sample Queries
 Database Schema
 The MySQL database schema for this pipeline is defined in the create_tables.sql script. The main table stores the processed transaction records. Below is the schema definition for the primary table in the database:
 sql
 Copy
 -- Create table for transactions data
-CREATE TABLE transactions (
+
+
+    CREATE TABLE transactions (
     transaction_id    INT PRIMARY KEY,
     transaction_date  DATETIME,
     account_id        VARCHAR(20),
     location          VARCHAR(50),
     amount            DECIMAL(10,2)
-);
+    );
+
+
+
 transactions: Holds each transaction record after ETL processing.
 transaction_id – Unique identifier for the transaction (primary key).
 transaction_date – Date and time of the transaction (stored as DATETIME after transformation).
@@ -55,25 +62,31 @@ Once data is loaded into the transactions table, you can run SQL queries to retr
 sql
 Copy
 -- Query 1: Total number of transactions and total amount by location
-SELECT location, 
+
+      
+    SELECT location,
        COUNT(*) AS total_transactions, 
        SUM(amount) AS total_amount
-FROM transactions
-GROUP BY location;
+    FROM transactions
+    GROUP BY location;
+
 This query returns the total count of transactions and the sum of transaction amounts for each location. It helps identify which locations have the highest number of transactions and the largest transaction volumes.
 sql
 Copy
 -- Query 2: Top 5 transactions by highest value
-SELECT transaction_id, account_id, location, amount
-FROM transactions
-ORDER BY amount DESC
-LIMIT 5;
+
+
+    SELECT transaction_id, account_id, location, amount
+    FROM transactions
+    ORDER BY amount DESC
+    LIMIT 5;
+
 This query fetches the five largest transactions in terms of monetary value, showing which transactions were highest and where they occurred (including the account and location details for context). You can adjust these queries or write new ones to analyze the data further (for example, filtering by date ranges, specific account IDs, or transaction types if those were included in the dataset).
 
 
 
 
-Sample Dataset
+# Sample Dataset
 The pipeline processes a CSV dataset containing raw transaction records. Below is a small sample from the uploaded CSV file (showing a few rows of raw data) and the corresponding transformed data after the ETL: Sample Raw Data (CSV)
 pgsql
 Copy
@@ -90,12 +103,12 @@ transaction_id | transaction_date | account_id | location    | amount
 1003           | 2025-01-16       | ACC789     | New York    | 300.75  
 After transformation: dates are standardized to YYYY-MM-DD format (or full datetime as needed), currency symbols and commas are removed from the amount (stored as numeric 1200.50, 50.00, 300.75), and location names are consistently capitalized (e.g., "new york" was corrected to "New York"). This transformed data is what gets loaded into the MySQL database. It is now ready for accurate querying and analysis.
 
-Architecture 
+#Architecture 
 The flow begins with an S3 bucket (left) where the CSV data is stored; an upload event here triggers the ETL Lambda function. The Lambda (ETL) is responsible for reading the file from S3, performing transformations, and then writing the cleaned data to Amazon RDS (MySQL) (right). To enable monitoring, an API Gateway is configured (top) which invokes a separate Lambda running a FastAPI application. This FastAPI Lambda provides the /etl/status endpoint that allows users to check the pipeline status. CloudWatch Logs (bottom) receive all logs from the Lambda functions for monitoring and debugging. In case of any errors during the ETL execution, the Lambda publishes a message to an SNS topic (shown with a notification icon), which in turn sends out email/SMS alerts to subscribers. The architecture is entirely serverless, leveraging managed AWS services to ensure scalability, reliability, and minimal operational maintenance.
 
 
 
-Setup & Deployment Instructions
+# Setup & Deployment Instructions
 Follow these steps to set up and deploy the ETL pipeline on AWS. The repository includes AWS CLI scripts to automate many of these steps. Ensure you have AWS CLI installed and configured with appropriate credentials before proceeding.
 Clone the Repository: Download or clone the aws-etl-pipeline repository to your local machine. Review the code to familiarize yourself with the Lambda functions and configuration files.
 Prepare AWS Resources:
@@ -107,17 +120,25 @@ Upload the dataset CSV file to this bucket (e.g., aws s3 cp data/bankdataset.csv
 RDS MySQL Instance: Launch an Amazon RDS MySQL instance. This can be done through the AWS Console or CLI. Specify a DB instance identifier, master username, and password. For testing or small-scale use, a db.t2.micro instance (with Free Tier if eligible) is sufficient. Note: Save the RDS endpoint, username, and password for the next steps. Also ensure the Lambda will be able to connect to this DB (you might make the DB publicly accessible for simplicity, or configure the Lambda’s VPC access if using private subnets).
 Database Setup: Once the MySQL instance is available, connect to it (using MySQL client or AWS Query Editor) and run the create_tables.sql script from the repository. This will create the required schema (e.g., the transactions table) in your database.
 Configure Environment Variables: Update the configuration for the ETL Lambda function with the necessary environment variables so it knows how to access the database and other resources. Specifically, set:
+
 DB_HOST – the endpoint of your RDS instance (e.g., mydb.cleabcde123.us-west-2.rds.amazonaws.com).
+
 DB_NAME – the database name (schema name) where the table resides.
+
 DB_USER – the database master username or a dedicated user for the ETL to connect.
+
 DB_PASS – the database password.
+
 S3_BUCKET – the name of the S3 bucket where the CSV is stored (if the code expects it as an env var).
+
 SNS_TOPIC_ARN – the ARN of the SNS topic for alerts (if the Lambda publishes to SNS on failure).
+
 These can be set in the AWS CLI deployment script or after deployment by using aws lambda update-function-configuration for the ETL function. If a configuration file (like a .env or config JSON) is used in the code, update that before packaging.
 Deploy the ETL Lambda Function: Use the provided AWS CLI script or commands to package and deploy the ETL Lambda. This typically involves zipping the Lambda code and using aws lambda create-function (or updating if it already exists) with the appropriate IAM role. For example:
 bash
 Copy
-aws lambda create-function --function-name EtlLambda \
+
+    aws lambda create-function --function-name EtlLambda \
     --runtime python3.9 --handler lambda_function.handler \
     --zip-file fileb://etl_code.zip --role <execution-role-ARN> \
     --environment Variables="{DB_HOST=<...>,DB_NAME=<...>,...}"
@@ -140,7 +161,7 @@ Check API Endpoint: Finally, test the /etl/status API endpoint. (See the next se
 Following these steps, you will have the ETL pipeline running in your AWS environment. The provided scripts in the repository are meant to simplify resource creation and deployment, so use them as needed for your setup. Always clean up or delete resources (S3 bucket, RDS instance, Lambdas, etc.) when they are no longer needed to avoid incurring ongoing costs.
 
 
-API Usage (ETL Status)
+# API Usage (ETL Status)
 If the pipeline is deployed with the FastAPI-based status endpoint, you can interact with it to retrieve the ETL pipeline’s status or metadata. The API is exposed via API Gateway at the path /etl/status. Here’s how to use it:
 Method: GET
 Endpoint: /etl/status (on your deployed API Gateway base URL)
@@ -148,27 +169,33 @@ Endpoint: /etl/status (on your deployed API Gateway base URL)
 When you send a GET request to this endpoint, the Lambda running FastAPI will respond with a JSON object containing the status information. There is no authentication by default (unless you added API keys or authorizers), so any client with the URL can call it. Example usage:
 bash
 Copy
-# Using curl to get ETL status (replace <API_URL> with your API Gateway base URL)
+Using curl to get ETL status (replace <API_URL> with your API Gateway base URL)
 curl -X GET <API_URL>/etl/status 
 Example Response:
-json
-Copy
-{
+ json
+```Copy
+{ 
   "status": "Success",
   "last_run": "2025-03-15T22:00:00Z",
   "records_processed": 12345
 }
+```
 In this example, the JSON indicates the last ETL run was successful, provides a timestamp for the last run, and shows how many records were processed in that run. The actual response format depends on how the FastAPI endpoint is implemented. It might include fields such as:
+
 "status" – could be a message or code (e.g., "Success", "Failed", "Running") indicating the state of the ETL process.
-"last_run" – a timestamp or human-readable date of the last pipeline execution.
+
+"last_run" – a timestamp or human-readable date of the last pipeline execution
+.
 "records_processed" – number of records processed or loaded in the last run.
+
 "error_message" – (optional) if the last run failed, an error summary might be provided.
+
 Use tools like curl, Postman, or a web browser to hit the endpoint. If the pipeline was just triggered or is running, the status might show as running/in-progress (if implemented). Typically, however, since the ETL Lambda runs quickly and then exits, this status endpoint is mainly to report on the last completed run or overall system health. Note: The actual URL of the API Gateway is not provided here for security reasons. Replace <API_URL> with your deployment’s URL. If you used the provided scripts, the deployment process might output the URL for convenience.
 
 
 
 
-Monitoring & Troubleshooting
+# Monitoring & Troubleshooting
 Monitoring the ETL pipeline is crucial for maintaining reliability. This pipeline uses AWS CloudWatch and SNS for monitoring and alerting:
 CloudWatch Logging: All actions performed by the Lambda functions (both the ETL Lambda and the API Lambda) are logged to AWS CloudWatch. You can view these logs in the CloudWatch Logs console. There will be a log group for each Lambda (e.g., /aws/lambda/EtlLambda and /aws/lambda/StatusApiLambda). Within the log streams, you can find detailed logs such as the number of records read from the file, how many were successfully inserted into the DB, and any error stack traces if exceptions occurred.
 Usage: In AWS Console, navigate to CloudWatch > Logs > Log Groups, find the relevant Lambda log group, and inspect the latest log stream for recent runs. This is the first place to check when troubleshooting issues (e.g., if data didn’t appear in the database, the logs might show a database connection error or data format issue).
